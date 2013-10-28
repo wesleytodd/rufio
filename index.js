@@ -12,6 +12,7 @@ config.set('ENVIRONMENT', process.env.RUFIO_ENVIRONMENT);
 module.exports = {
 	util: util,
 	config: config,
+	filters: require('./lib/filters'),
 	setEnvironment: function(env) {
 		config.set('ENVIRONMENT', env);
 	},

@@ -92,7 +92,7 @@ As you can see in the above type config, most global settings can be overridden 
 Each content type can have as many items as you like.  To create a new item just run `yo rufio:<type> <name>`.  This will create a new item of a given type with the name provided.  So say you want a new post named "My Awesome Post", run this command: 
 
 ```
-$ yo rufio "My Awesome Post"
+$ yo rufio:post "My Awesome Post"
 ```
 
 This will create a file in the `posts` directory named `my-awesome-post.md`.  This file will look like this:
@@ -109,6 +109,8 @@ Status: Draft
 This is the general format for an item, it begins with a set of key/value pairs of meta data.  These meta items are totally extensible, so you can define any new keys you like.  Any meta items are accessible in templates, so this can be used to define any extra information you like.
 
 Anything after the `--META--` is considered the content of the item.  Generally this will be some markdown that will be parsed and added to the template.  After the content is passed through the `filters` for the given type, it is assigned to the `content` variable for use in the templates.
+
+*Right now the only generators defined for new items are post and page.  I will hopefully figure out how to define custom ones based on your config, but don't have that worked our just yet*
 
 ## Themes
 

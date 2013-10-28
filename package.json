@@ -11,7 +11,7 @@
   "license": "BSD",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git@github.com:wesleytodd/rufio.git"
   },
   "dependencies": {
     "mkdirp": "~0.3.5",

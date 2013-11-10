@@ -7,7 +7,7 @@ var conf = config.get();
 // Set env vars
 config.set('RUFIO_ROOT', __dirname);
 config.set('BUILD_ROOT', util.path.join(process.cwd(), conf.build.directory));
-config.set('ENVIRONMENT', process.env.RUFIO_ENVIRONMENT);
+config.set('ENVIRONMENT', process.env.RUFIO_ENVIRONMENT || 'prod');
 
 module.exports = {
 	util: util,

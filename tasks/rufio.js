@@ -22,30 +22,34 @@ module.exports = function (grunt) {
 	var rufioConf = grunt.file.readJSON('rufio.json');
 
 	grunt.registerTask('rufio', 'Build a Rufio site', task(function() {
+		var done = this.async();
 		// Build all types
-		rufio.build();
+		rufio.build(done);
 	}));
 
 	// Dev task with env flag
 	grunt.registerTask('rufio-dev', 'Build a Rufio site in development', task(function() {
+		var done = this.async();
 		// Set dev flag
 		rufio.setEnvironment('dev');
 		// Build all types
-		rufio.build();
+		rufio.build(done);
 	}));
 
 	// Register a build task for each type
 	for (var type in rufioConf.types) {
 		(function(type) {
 			grunt.registerTask('rufio-' + type, task(function() {
+				var done = this.async();
 				// Build items
-				rufio.buildType(type);
+				rufio.buildType(type, done);
 			}));
 			grunt.registerTask('rufio-' + type + '-dev', task(function() {
+				var done = this.async();
 				// Set dev flag
 				rufio.setEnvironment('dev');
 				// Build items
-				rufio.buildType(type);
+				rufio.buildType(type, done);
 			}));
 		})(type);
 	}

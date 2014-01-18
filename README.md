@@ -138,3 +138,7 @@ var filters = require('filters');
 var content = filters.apply('template', '<%= title %>', {title: "The Title"});
 console.log(content); // Outputs: The Title
 ```
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/wesleytodd/rufio/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+

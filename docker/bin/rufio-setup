@@ -1,0 +1,14 @@
+#! /bin/bash
+# Usage:
+#
+# rufio-setup <HOSTNAME> <PORT> <VERSION>
+#
+# Example:
+#
+# $ rufio-setup example.com 8080 0.0.1
+
+# Get directory of this file
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+$DIR/rufio-chver $3
+$DIR/rufio-nginx $1 $2

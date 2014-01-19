@@ -1,18 +1,15 @@
 var fs = require('fs'),
+	path = require('path'),
 	util = require('../lib/util'),
 	template = require('./template'),
-	conf = require('../lib/config').get(),
-	themeDir = util.path.resolve(util.path.join(conf.themes.directory, conf.themes.active));
+	config = require('../lib/config');
 
-module.exports = function(content, data) {
-	var c = '';
+module.exports = function(content) {
+	var p = path.join(config.get('THEME_ROOT'), content);
 	try {
-		var cwd = process.cwd();
-		process.chdir(themeDir);
-		c = template(util.readFile(content), data);
-		process.chdir(cwd);
-	} catch (e) {
-		console.error('Failed to open or parse template: ' + content);
+		var c = fs.readFileSync(p, {encoding: 'utf8'});
+		return template.call(this, c);
+	} catch(err) {
+		console.error(err);
 	}
-	return c;
 };

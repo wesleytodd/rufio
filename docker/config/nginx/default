@@ -1,0 +1,14 @@
+server {
+	listen 80 default;
+	index index.html;
+
+	location ~ /v/active/(.*) {
+		alias /usr/local/rufio/$host/active/$1;
+	}
+	location ~ /v/(.*)/(.*) {
+		alias /usr/local/rufio/$host/$1/$2;
+	}
+	location ~ /(.*) {
+		alias /usr/local/rufio/$host/active/$1;
+	}
+}

@@ -1,0 +1,20 @@
+#! /bin/bash
+# Usage:
+#
+# rufio-chver <VERSION>
+#
+# Example:
+#
+# $ rufio-chver 0.0.1
+
+# Get directory of this file
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Echo command we are running
+echo "cd $DIR/../../build && ln -sfn ./$1 ./active && cd -"
+
+# Link up the active version
+# Cd'ing into the directory is required because the absolute path will
+# be incorrect inside the docker container, so this allows us to 
+# create a relative symalink
+cd $DIR/../../build && ln -sfn ./$1 ./active && cd -

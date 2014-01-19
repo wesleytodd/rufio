@@ -1,0 +1,15 @@
+#!/usr/bin/env node
+
+// Dont' auto init
+var rufio = require('..');
+
+rufio.init(function() {
+	rufio.compile.all(function(e, d) {
+		if (e) process.exit(e);
+
+		rufio.build.all(d, function(e) {
+			console.log('Error: ', e);
+			console.log('Done');
+		});
+	});
+});

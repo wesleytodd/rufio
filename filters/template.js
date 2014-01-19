@@ -1,5 +1,5 @@
-var _ = require('underscore');
+var util = require('../lib/util');
 
-module.exports = function(content, data) {
-	return _.template(content)(data);
+module.exports = function(content) {
+	return util._.template(content)(this);
 };

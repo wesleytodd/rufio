@@ -4,7 +4,7 @@
   "description": "A static site generator",
   "main": "index.js",
   "bin": {
-    "rufio" : "./bin/rufio"
+    "rufio": "./bin/rufio"
   },
   "keywords": [
     "static site generator",

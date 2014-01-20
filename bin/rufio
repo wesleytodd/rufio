@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 var commander = require('commander'),
-	rufio = require('..');
+	rufio = require('..'),
+	exec = require('child_process').exec;
 
 
 // CLI options
 commander
 	.version(rufio.version)
 	.usage('COMMAND [options]')
-	.option('-b, --buildVersion [value]', 'specify the build directory')
 ;
 
 // Help command
@@ -20,31 +20,68 @@ commander
 
 // Build command
 commander
-	.command('build')
-	.description('Builds the site. Specify a version with -b.')
-	.action(function(){
+	.command('build [ver]')
+	.description('Builds the site. Specify an optional version.')
+	.action(function(ver){
 
 		// Set the build version if given
-		if (commander.buildVersion) {
-			process.env.RUFIO_BUILD_VERSION = commander.buildVersion;
+		if (ver) {
+			process.env.RUFIO_BUILD_VERSION = ver;
 		}
 
 		// Start Rufio
-		rufio.init(function() {
+		rufio.init(function(err) {
+			if (err) process.exit(err);
 
 			// Compile
-			rufio.compile.all(function(e, d) {
-				if (e) process.exit(e);
+			rufio.compile.all(function(err, d) {
+				if (err) process.exit(err);
 
 				// Build
 				rufio.build.all(d, function(e) {
-					console.log('Done!');
+					console.log('Site build complete');
 				});
 			});
 		});
 
 	});
 
+// Change Active Version
+commander
+	.command('chver <ver>')
+	.description('Changes the active version.')
+	.action(function(ver) {
+		// Start Rufio
+		rufio.init(function() {
+			// Link the version to active
+			exec('ln -sfn ./' + ver + ' ./active', {
+				cwd: rufio.config.get('BUILD_ROOT')
+			}, function(err, stdout, stderr) {
+				if (err) return console.error(err);
+				console.log('Active build changed to ' + ver);
+			});
+		});
+	});
+
+// Start Nginx Server
+commander
+	.command('serve <host> <port>')
+	.description('Runs Nginx inside a Docker container.')
+	.action(function(host, port) {
+		// Start Rufio
+		rufio.init(function() {
+			exec([
+				'docker run -d',
+				'-p ' + port + ':80',
+				'-v ' + rufio.config.get('RUFIO_ROOT') + '/docker/config/nginx:/etc/nginx/sites-enabled',
+				'-v ' + rufio.config.get('SITE_ROOT') + '/log/nginx:/var/log/nginx',
+				'-v ' + rufio.config.get('BUILD_ROOT') + ':/usr/local/rufio/' + host
+			].join(' '), function(err) {
+				if (err) return console.error(err);
+				console.log('Nginx started at ' + hostname + ':' + port);
+			});
+		});
+	});
 
 // Parse the args
 commander.parse(process.argv);

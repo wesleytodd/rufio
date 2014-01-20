@@ -1,15 +1,55 @@
 #!/usr/bin/env node
 
-// Dont' auto init
-var rufio = require('..');
+var commander = require('commander'),
+	rufio = require('..');
 
-rufio.init(function() {
-	rufio.compile.all(function(e, d) {
-		if (e) process.exit(e);
 
-		rufio.build.all(d, function(e) {
-			console.log('Error: ', e);
-			console.log('Done');
+// CLI options
+commander
+	.version(rufio.version)
+	.usage('COMMAND [options]')
+	.option('-b, --buildVersion [value]', 'specify the build directory')
+;
+
+// Help command
+commander
+	.command('help')
+	.description('Display this usage information.')
+	.action(commander.help)
+;
+
+// Build command
+commander
+	.command('build')
+	.description('Builds the site. Specify a version with -b.')
+	.action(function(){
+
+		// Set the build version if given
+		if (commander.buildVersion) {
+			process.env.RUFIO_BUILD_VERSION = commander.buildVersion;
+		}
+
+		// Start Rufio
+		rufio.init(function() {
+
+			// Compile
+			rufio.compile.all(function(e, d) {
+				if (e) process.exit(e);
+
+				// Build
+				rufio.build.all(d, function(e) {
+					console.log('Done!');
+				});
+			});
 		});
+
 	});
-});
+
+
+// Parse the args
+commander.parse(process.argv);
+
+// If no other command was given show help
+if (!commander.args.length) {
+	commander.help();
+}

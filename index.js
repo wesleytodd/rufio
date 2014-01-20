@@ -158,7 +158,8 @@ var init = function(done) {
 		//
 		config.constant('RUFIO_ROOT', __dirname);
 		config.constant('SITE_ROOT', process.cwd());
-		config.constant('BUILD_ROOT', path.join(config.get('SITE_ROOT'), config.get('build.directory'), config.get('build.active')));
+		config.constant('BUILD_VERSION', process.env.RUFIO_BUILD_VERSION || config.get('build.active') || 'active');
+		config.constant('BUILD_ROOT', path.join(config.get('SITE_ROOT'), config.get('build.directory')));
 		config.constant('THEME_ROOT', path.join(config.get('SITE_ROOT'), config.get('themes.directory'), config.get('themes.active')));
 
 		// @TODO Load plugins
@@ -185,10 +186,21 @@ var init = function(done) {
 	});
 };
 
+// Load the package.json
+try {
+	var pkg = fs.readFileSync(path.join(__dirname, 'package.json'), {encoding: 'utf8'});
+	pkg = JSON.parse(pkg);
+} catch(err) {
+	console.error('Error loading package.json');
+}
+
 //
 // Public Interface
 //
 module.exports = {
+
+	// Version
+	version: pkg.version || 'unknown',
 
 	// The init method
 	init: init,

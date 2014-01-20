@@ -24,8 +24,9 @@ module.exports = function (grunt) {
 					grunt.fatal(Err);
 				}
 				// Compile the site content
-				rufio.compile.all(function(data) {
-					grunt.log.ok('Compiling Data Complete');
+				rufio.compile.all(function(err, data) {
+					if (err) grunt.fatal(err);
+					grunt.log.ok('Data Compilation Complete');
 					fnc(data, done);
 				});
 			});
@@ -34,7 +35,10 @@ module.exports = function (grunt) {
 
 	grunt.registerTask('rufio', 'Build a Rufio site', task(function(data, done) {
 		// Build all types
-		rufio.build.all(data, done);
+		rufio.build.all(data, function() {
+			grunt.log.ok('Build Complete');
+			done();
+		});
 	}));
 
 	// Dev task with env flag
@@ -42,7 +46,10 @@ module.exports = function (grunt) {
 		// Set dev flag
 		rufio.config.ENVIRONMENT = 'dev';
 		// Build all types
-		rufio.build.all(data, done);
+		rufio.build.all(data, function() {
+			grunt.log.ok('Build Complete');
+			done();
+		});
 	}));
 
 	// Register a build task for each type

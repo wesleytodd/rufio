@@ -6,7 +6,8 @@ var path = require('path'),
 	hooks = require('./lib/hooks'),
 	filters = require('./lib/filters'),
 	compile = require('./lib/compile'),
-	build = require('./lib/build');
+	build = require('./lib/build'),
+	plugins = require('./lib/plugins');
 
 //
 // Core Validation
@@ -162,25 +163,36 @@ var init = function(done) {
 		config.constant('BUILD_ROOT', path.join(config.get('SITE_ROOT'), config.get('build.directory')));
 		config.constant('THEME_ROOT', path.join(config.get('SITE_ROOT'), config.get('themes.directory'), config.get('themes.active')));
 
-		// @TODO Load plugins
+		// Add core filter load paths
+		plugins.addLoadPath(path.join(config.get('RUFIO_ROOT'), 'node_modules'));
+		plugins.addLoadPath(path.join(config.get('SITE_ROOT'), 'node_modules'));
 
-		// Run the validation
-		config.validate(function(err) {
-			// Log error
-			if (err) {
-				return done(err);
-			}
-			
-			// Load the filters
-			filters.load(process.env.RUFIO_FILTER_PATH, function(err) {
+		// Add core filter load paths
+		filters.addLoadPath(path.join(config.get('RUFIO_ROOT'), 'filters'), 1000);
+		filters.addLoadPath(path.join(config.get('SITE_ROOT'), 'filters'), 0);
+
+		// Load and init the plugins
+		plugins.load(rufio, config.get('plugins.active'), function() {
+
+			// Run the validation
+			config.validate(function(err) {
 				// Log error
 				if (err) {
 					return done(err);
 				}
+				
+				// Load the filters
+				filters.load(function(err) {
+					// Log error
+					if (err) {
+						return done(err);
+					}
 
-				// Everything is loaded and ready to go
-				done();
+					// Everything is loaded and ready to go
+					done();
+				});
 			});
+
 		});
 
 	});
@@ -190,6 +202,7 @@ var init = function(done) {
 try {
 	var pkg = fs.readFileSync(path.join(__dirname, 'package.json'), {encoding: 'utf8'});
 	pkg = JSON.parse(pkg);
+	config.constant('RUFIO_VERSION', pkg.version || 'unknown');
 } catch(err) {
 	console.error('Error loading package.json');
 }
@@ -197,10 +210,10 @@ try {
 //
 // Public Interface
 //
-module.exports = {
+var rufio = module.exports = {
 
 	// Version
-	version: pkg.version || 'unknown',
+	version: config.get('RUFIO_VERSION'),
 
 	// The init method
 	init: init,

@@ -31,7 +31,10 @@ commander
 
 		// Start Rufio
 		rufio.init(function(err) {
-			if (err) process.exit(err);
+			if (err) {
+				console.error(err);
+				process.exit(err);
+			}
 
 			// Compile
 			rufio.compile.all(function(err, d) {

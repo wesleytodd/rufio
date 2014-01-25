@@ -5,8 +5,8 @@ var path = require('path'),
 	util = require('./lib/util'),
 	hooks = require('./lib/hooks'),
 	filters = require('./lib/filters'),
-	compile = require('./lib/compile'),
-	build = require('./lib/build'),
+	load = require('./lib/load'),
+	write = require('./lib/write'),
 	plugins = require('./lib/plugins');
 
 //
@@ -142,15 +142,18 @@ var initalizing = false;
 var init = function(done) {
 	// Only allow one init call
 	if (initalizing) {
+		util.logger.warn('Initalization already in progress');
 		done('Initalization already in progress');
 	}
 	initalizing = true;
+	util.logger.info('Initalizing Rufio');
 
 	// 
 	// Load & validate the config
 	//
 	config.load(function(err) {
 		if (err) {
+			util.logger.error('Error loading config:', err);
 			return done(err);
 		}
 
@@ -172,12 +175,18 @@ var init = function(done) {
 		filters.addLoadPath(path.join(config.get('SITE_ROOT'), 'filters'), 0);
 
 		// Load and init the plugins
-		plugins.load(rufio, config.get('plugins.active'), function() {
+		plugins.load(rufio, config.get('plugins.active'), function(err) {
+			// Log error
+			if (err) {
+				util.logger.error('Error loadding plugins:', err);
+				return done(err);
+			}
 
 			// Run the validation
 			config.validate(function(err) {
 				// Log error
 				if (err) {
+					util.logger.error('Config validation errors:', err);
 					return done(err);
 				}
 				
@@ -185,6 +194,7 @@ var init = function(done) {
 				filters.load(function(err) {
 					// Log error
 					if (err) {
+						util.logger.error('Error loading filters:', err);
 						return done(err);
 					}
 
@@ -200,11 +210,18 @@ var init = function(done) {
 
 // Load the package.json
 try {
-	var pkg = fs.readFileSync(path.join(__dirname, 'package.json'), {encoding: 'utf8'});
+	// Get path to package.json
+	var pkgPath = path.join(__dirname, 'package.json')
+	util.logger.info('Loading ' + pkgPath);
+
+	// Load the file
+	var pkg = fs.readFileSync(pkgPath, {encoding: 'utf8'});
 	pkg = JSON.parse(pkg);
+
+	// Set the verison
 	config.constant('RUFIO_VERSION', pkg.version || 'unknown');
 } catch(err) {
-	console.error('Error loading package.json');
+	util.logger.error('Error loading package.json', err);
 }
 
 //
@@ -230,10 +247,10 @@ var rufio = module.exports = {
 	// Event Hooks
 	hooks: hooks,
 
-	// Compile Methods
-	compile: compile,
+	// Load Methods
+	load: load,
 
-	// Build Methods
-	build: build,
+	// Write Methods
+	write: write,
 
 };

@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
 var commander = require('commander'),
-	rufio = require('..'),
 	exec = require('child_process').exec;
-
 
 // CLI options
 commander
-	.version(rufio.version)
+	.option('-V, --version', 'output the version number')
+	.option('-v, --verbose', 'Verbose logging')
+	.option('-s, --silent', 'Silent output')
+	.option('-d, --dev', 'Sets RUFIO_ENVIRONMENT to dev')
+	.option('-e, --environment [environment]', 'Sets RUFIO_ENVIRONMENT to the supplied value')
 	.usage('COMMAND [options]')
 ;
 
@@ -17,6 +19,12 @@ commander
 	.description('Display this usage information.')
 	.action(commander.help)
 ;
+
+// Version, custom to prevent loading before env vars are set
+commander.on('version', function() {
+	console.log(require('..').version);
+	process.exit(0);
+});
 
 // Build command
 commander
@@ -29,6 +37,9 @@ commander
 			process.env.RUFIO_BUILD_VERSION = ver;
 		}
 
+		// Load rufio
+		var rufio = require('..');
+
 		// Start Rufio
 		rufio.init(function(err) {
 			if (err) {
@@ -36,13 +47,16 @@ commander
 				process.exit(err);
 			}
 
-			// Compile
-			rufio.compile.all(function(err, d) {
-				if (err) process.exit(err);
+			// Load
+			rufio.load.all(function(err, d) {
+				if (err) {
+					console.error(err);
+					process.exit(err);
+				}
 
-				// Build
-				rufio.build.all(d, function(e) {
-					console.log('Site build complete');
+				// Write
+				rufio.write.all(d, function(e) {
+					console.log('Site build complete to version: ' + rufio.config.get('BUILD_VERSION'));
 				});
 			});
 		});
@@ -54,6 +68,10 @@ commander
 	.command('chver <ver>')
 	.description('Changes the active version.')
 	.action(function(ver) {
+
+		// Load rufio
+		var rufio = require('..');
+
 		// Start Rufio
 		rufio.init(function() {
 			// Link the version to active
@@ -71,6 +89,10 @@ commander
 	.command('serve <host> <port>')
 	.description('Runs Nginx inside a Docker container.')
 	.action(function(host, port) {
+
+		// Load rufio
+		var rufio = require('..');
+
 		// Start Rufio
 		rufio.init(function() {
 			exec([
@@ -86,10 +108,30 @@ commander
 		});
 	});
 
+// Silent?
+commander.on('silent', function() {
+	process.env.RUFIO_SILENT = true;
+});
+
+// Verbose loggins?
+commander.on('verbose', function() {
+	process.env.RUFIO_VERBOSE_LOGGING = true;
+});
+
+// Environment?
+commander.on('evironment', function(args) {
+	process.env.RUFIO_ENVIRONMENT = args.environment;
+});
+
+// Dev Environment?
+commander.on('dev', function(args) {
+	process.env.RUFIO_ENVIRONMENT = 'dev';
+});
+
 // Parse the args
 commander.parse(process.argv);
 
 // If no other command was given show help
 if (!commander.args.length) {
-	commander.help();
+	return commander.help();
 }

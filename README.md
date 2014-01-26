@@ -1,5 +1,7 @@
 # Rufio
 
+![image](http://wesleytodd.com/images/rufio.jpg)
+
 Rufio is a static site generator that uses Yeoman and Grunt.  Scaffolding a site is done with Yeoman, to get started just install `generator-rufio` and run it in the directory you want your new site in:
 
 ```

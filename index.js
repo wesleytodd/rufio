@@ -172,7 +172,8 @@ var init = function(done) {
 
 		// Add core filter load paths
 		filters.addLoadPath(path.join(config.get('RUFIO_ROOT'), 'filters'), 1000);
-		filters.addLoadPath(path.join(config.get('SITE_ROOT'), 'filters'), 0);
+		filters.addLoadPath(path.join(config.get('SITE_ROOT'), 'filters'), 50);
+		filters.addLoadPath(path.join(config.get('THEME_ROOT'), 'filters'), 10);
 
 		// Load and init the plugins
 		plugins.load(rufio, config.get('plugins.active'), function(err) {

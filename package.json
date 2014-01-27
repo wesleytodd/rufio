@@ -22,6 +22,7 @@
     "lodash": "~2.4.1",
     "async": "~0.2.9",
     "commander": "~2.1.0",
-    "winston": "~0.7.2"
+    "winston": "~0.7.2",
+    "moment": "~2.5.1"
   }
 }

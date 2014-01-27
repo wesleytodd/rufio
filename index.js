@@ -179,7 +179,7 @@ var init = function(done) {
 		plugins.load(rufio, config.get('plugins.active'), function(err) {
 			// Log error
 			if (err) {
-				util.logger.error('Error loadding plugins:', err);
+				util.logger.error('Failed to load plugins:', err);
 				return done(err);
 			}
 
@@ -195,7 +195,7 @@ var init = function(done) {
 				filters.load(function(err) {
 					// Log error
 					if (err) {
-						util.logger.error('Error loading filters:', err);
+						util.logger.error('Failed to load filters:', err);
 						return done(err);
 					}
 
@@ -222,7 +222,7 @@ try {
 	// Set the verison
 	config.constant('RUFIO_VERSION', pkg.version || 'unknown');
 } catch(err) {
-	util.logger.error('Error loading package.json', err);
+	util.logger.error('Failed to load package.json', err);
 }
 
 //

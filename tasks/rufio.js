@@ -1,71 +1,66 @@
-// Require rufio
-var rufio = require('..');
-
 module.exports = function (grunt) {
 
-	// Wrap common task actions
-	function task(fnc) {
-		return function () {
-			// These are async operations
-			var done = this.async();
+	grunt.registerMultiTask('rufio', 'Builds a Rufio site', function() {
+		// This is an async task
+		var done = this.async();
 
-			// Default Options
-			var defaultOptions = {};
+		// Default Options
+		var defaultOptions = {
+			environment: 'prod',
+			silent: false,
+			version: 'active'
+		};
 
-			// Merge config with defaults
-			var options = grunt.util._.extend(defaultOptions, this.options());
+		// Merge config with defaults
+		var options = grunt.util._.extend(defaultOptions, this.options());
 
-			// Log options
-			grunt.verbose.writeflags(options, 'Options');
+		// Log options
+		grunt.verbose.writeflags(options, 'Options');
 
-			rufio.init(function(err) {
-				// Kill on init error
+		// Pass along verbose
+		var flags = grunt.option.flags();
+		if (flags.indexOf('--verbose') !== -1 || flags.indexOf('-v') !== -1) {
+			process.env.RUFIO_VERBOSE_LOGGING = true;
+		}
+
+		// Set the rufio environment
+		process.env.RUFIO_ENVIRONMENT = options.environment;
+
+		// Silent?
+		if (options.silent) {
+			process.env.RUFIO_SILENT = options.silent;
+		}
+
+		// Load rufio
+		var rufio = require('..');
+
+		// Initalize Rufio
+		rufio.init(function(err) {
+			// Kill on init error
+			if (err) {
+				grunt.fatal(err);
+			}
+
+			// Load the content
+			rufio.load.all(function(err, data) {
+				// Exit on load error
 				if (err) {
-					grunt.fatal(Err);
+					grunt.fatal(err);
 				}
-				// Compile the site content
-				rufio.compile.all(function(err, data) {
-					if (err) grunt.fatal(err);
-					grunt.log.ok('Data Compilation Complete');
-					fnc(data, done);
+
+				// Write
+				rufio.write.all(data, function(err) {
+					// Exit on write error
+					if (err) {
+						grunt.fatal(err);
+					}
+
+					grunt.log.ok('Site build complete to version: ' + rufio.config.get('BUILD_VERSION'));
+					done();
 				});
 			});
-		};
-	};
-
-	grunt.registerTask('rufio', 'Build a Rufio site', task(function(data, done) {
-		// Build all types
-		rufio.build.all(data, function() {
-			grunt.log.ok('Build Complete');
-			done();
 		});
-	}));
-
-	// Dev task with env flag
-	grunt.registerTask('rufio-dev', 'Build a Rufio site in development', task(function(data, done) {
-		// Set dev flag
-		rufio.config.ENVIRONMENT = 'dev';
-		// Build all types
-		rufio.build.all(data, function() {
-			grunt.log.ok('Build Complete');
-			done();
-		});
-	}));
-
-	// Register a build task for each type
-	for (var type in rufio.config.get('types')) {
-		(function(type) {
-			grunt.registerTask('rufio-' + type, task(function(data, done) {
-				// Build items
-				rufio.build.type(type, data, done);
-			}));
-			grunt.registerTask('rufio-' + type + '-dev', task(function(data, done) {
-				// Set dev flag
-				rufio.config.ENVIRONMENT = 'dev';
-				// Build items
-				rufio.build.type(type, data, done);
-			}));
-		})(type);
-	}
+		
+	});
 
 };

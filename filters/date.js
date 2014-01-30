@@ -1,9 +1,5 @@
-var moment = require('../lib/util').moment,
-	config = require('../lib/config');
+var moment = require('../lib/util').moment;
 
-module.exports = function(date) {
-	if (typeof this === 'string') {
-		var format = this;
-	}
+module.exports = function(date, format) {
 	return moment(date, format);
 };

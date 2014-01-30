@@ -1,3 +1,6 @@
+// Load rufio
+var Rufio = require('..');
+
 module.exports = function (grunt) {
 
 	grunt.registerMultiTask('rufio', 'Builds a Rufio site', function() {
@@ -31,8 +34,8 @@ module.exports = function (grunt) {
 			process.env.RUFIO_SILENT = options.silent;
 		}
 
-		// Load rufio
-		var rufio = require('..');
+		// Create an instance of a rufio app
+		var rufio = new Rufio();
 
 		// Initalize Rufio
 		rufio.init(function(err) {
@@ -42,20 +45,20 @@ module.exports = function (grunt) {
 			}
 
 			// Load the content
-			rufio.load.all(function(err, data) {
+			rufio.loadAll(function(err) {
 				// Exit on load error
 				if (err) {
 					grunt.fatal(err);
 				}
 
 				// Write
-				rufio.write.all(data, function(err) {
+				rufio.writeAll(function(err) {
 					// Exit on write error
 					if (err) {
 						grunt.fatal(err);
 					}
 
-					grunt.log.ok('Site build complete to version: ' + rufio.config.get('BUILD_VERSION'));
+					grunt.log.ok('Site build complete to version: ' + rufio.config.get('build:active'));
 					done();
 				});
 			});

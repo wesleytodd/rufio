@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 
 var commander = require('commander'),
-	exec = require('child_process').exec;
+	path = require('path'),
+	exec = require('child_process').exec,
+	Rufio = require('..');
 
 // CLI options
 commander
+	.version(Rufio.version)
 	.option('-V, --version', 'output the version number')
 	.option('-v, --verbose', 'Verbose logging')
+	.option('-l, --log-level [level]', 'Set the log level')
 	.option('-s, --silent', 'Silent output')
+	.option('-B, --boring', 'Boring output')
 	.option('-d, --dev', 'Sets RUFIO_ENVIRONMENT to dev')
-	.option('-e, --environment [environment]', 'Sets RUFIO_ENVIRONMENT to the supplied value')
+	.option('-e, --environment [environment]', 'Sets ENVIRONMENT to the supplied value')
+	.option('-b, --build-version [version]', 'Sets build:active config to the supplied value')
+	.option('-r, --site-root [path]', 'Sets the site root path')
+	.option('-f, --log-file [path]', 'Sets a log file, disables console logging')
 	.usage('COMMAND [options]')
 ;
 
@@ -20,43 +28,54 @@ commander
 	.action(commander.help)
 ;
 
-// Version, custom to prevent loading before env vars are set
-commander.on('version', function() {
-	console.log(require('..').version);
-	process.exit(0);
-});
-
 // Build command
 commander
 	.command('build [ver]')
 	.description('Builds the site. Specify an optional version.')
 	.action(function(ver){
 
-		// Set the build version if given
-		if (ver) {
-			process.env.RUFIO_BUILD_VERSION = ver;
+		// Verbose logging overrides normal log level setting
+		if (commander.verbose) {
+			commander.logLevel = 'info';
 		}
 
-		// Load rufio
-		var rufio = require('..');
+		// Dev flag
+		if (commander.dev) {
+			commander.environment = 'dev';
+		}
+
+		// Create rufio instance
+		var rufio = new Rufio({
+			rufio: {
+				logLevel: commander.logLevel,
+				silent: commander.silent,
+				cli: (commander.boring) ? false : true,
+				logFile: commander.logFile,
+			},
+			buildVersion: commander.buildVersion || ver,
+			siteRoot: commander.siteRoot,
+			environment: commander.environment,
+		});
 
 		// Start Rufio
 		rufio.init(function(err) {
 			if (err) {
-				console.error(err);
-				process.exit(err);
+				rufio.logger.error(err);
+				process.exit(1);
 			}
 
 			// Load
-			rufio.load.all(function(err, d) {
+			rufio.loadAll(function(err) {
 				if (err) {
-					console.error(err);
-					process.exit(err);
+					rufio.logger.error(err);
+					process.exit(1);
 				}
 
 				// Write
-				rufio.write.all(d, function(e) {
-					console.log('Site build complete to version: ' + rufio.config.get('BUILD_VERSION'));
+				rufio.writeAll(function(e) {
+
+					// Log complete
+					rufio.logger.info('Site build complete to version: ' + rufio.config.get('build:active'));
 				});
 			});
 		});
@@ -69,14 +88,14 @@ commander
 	.description('Changes the active version.')
 	.action(function(ver) {
 
-		// Load rufio
-		var rufio = require('..');
+		// Create rufio instance
+		var rufio = new Rufio();
 
 		// Start Rufio
 		rufio.init(function() {
 			// Link the version to active
 			exec('ln -sfn ./' + ver + ' ./active', {
-				cwd: rufio.config.get('BUILD_ROOT')
+				cwd: path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory'))
 			}, function(err, stdout, stderr) {
 				if (err) return console.error(err);
 				console.log('Active build changed to ' + ver);
@@ -90,8 +109,8 @@ commander
 	.description('Runs Nginx inside a Docker container.')
 	.action(function(host, port) {
 
-		// Load rufio
-		var rufio = require('..');
+		// Create rufio instance
+		var rufio = new Rufio();
 
 		// Start Rufio
 		rufio.init(function() {
@@ -100,33 +119,13 @@ commander
 				'-p ' + port + ':80',
 				'-v ' + rufio.config.get('RUFIO_ROOT') + '/docker/config/nginx:/etc/nginx/sites-enabled',
 				'-v ' + rufio.config.get('SITE_ROOT') + '/log/nginx:/var/log/nginx',
-				'-v ' + rufio.config.get('BUILD_ROOT') + ':/usr/local/rufio/' + host
+				'-v ' + path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory')) + ':/usr/local/rufio/' + host
 			].join(' '), function(err) {
 				if (err) return console.error(err);
 				console.log('Nginx started at ' + hostname + ':' + port);
 			});
 		});
 	});
-
-// Silent?
-commander.on('silent', function() {
-	process.env.RUFIO_SILENT = true;
-});
-
-// Verbose loggins?
-commander.on('verbose', function() {
-	process.env.RUFIO_VERBOSE_LOGGING = true;
-});
-
-// Environment?
-commander.on('evironment', function(args) {
-	process.env.RUFIO_ENVIRONMENT = args.environment;
-});
-
-// Dev Environment?
-commander.on('dev', function(args) {
-	process.env.RUFIO_ENVIRONMENT = 'dev';
-});
 
 // Parse the args
 commander.parse(process.argv);

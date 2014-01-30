@@ -1,16 +1,12 @@
-var util = require('../lib/util'),
-	filters = require('../lib/filters'),
-	config = require('../lib/config');
+module.exports = function(content, moreData) {
 
-module.exports = function(content) {
-	var data = util._.extend({}, this, {
-		global: config.get(),
-		env: config.ENVIRONMENT,
-		filters: filters,
-		include: function(tmplPath) {
-			return filters.apply('include', tmplPath, data);
-		}
-	});
+	// Merge the data
+	var data = this.util._.extend({}, this, moreData);
 
-	return util._.template(content)(data);
+	// Add an include method
+	data.include = function(tmplPath) {
+		return this.filters.apply('include', tmplPath, moreData);
+	}.bind(this);
+
+	return this.util._.template(content)(data);
 };

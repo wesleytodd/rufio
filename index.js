@@ -1,257 +1,283 @@
 // Requires
 var path = require('path'),
 	fs = require('fs'),
-	config = require('./lib/config'),
+	Logger = require('./lib/logger'),
+	Config = require('./lib/config'),
+	Hooks = require('./lib/hooks'),
+	Filters = require('./lib/filters'),
+	Plugins = require('./lib/plugins'),
+	Type = require('./lib/type'),
 	util = require('./lib/util'),
-	hooks = require('./lib/hooks'),
-	filters = require('./lib/filters'),
-	load = require('./lib/load'),
-	write = require('./lib/write'),
-	plugins = require('./lib/plugins');
+	coreValidationRules = require('./lib/validation-rules');
 
 //
-// Core Validation
+// Rufio App Constructor
 //
+var RufioApp = module.exports = function(options) {
 
-// Config cannot be missing or null
-config.validate(null, function(val, done) {
-	if (typeof val === 'undefined' || val === null) {
-		var err = 'Error loading config.  Are you sure it exists and is valid JSON?';
-	}
-	done(err);
-});
+	// Site root
+	var siteRoot = options.siteRoot || process.cwd();
 
-// Hostname is required
-config.validate('hostname', function(val, done) {
-	if (typeof val !== 'string') {
-		var err =  'Hostname is required.  Please specify one in your rufio.json';
-	}
-	done(err);
-});
+	// Environment
+	var env = options.environment || 'prod';
 
-// Must have a rufio key which must have a metaEnd
-config.validate('rufio', function(val, done) {
-	var err;
-	if (typeof val === 'undefined' || val === null) {
-		err = [
-			'Rufio config is required.',
-			'Make sure your rufio.json has something like this in it:',
-			'"rufio": {',
-				'\t"metaEnd": "--META--"',
-			'}',
-		].join('\n');
-	}
-	if (typeof val.metaEnd !== 'string') {
-		err = [
-			'Rufio\'s metaEnd is required.',
-			'Make sure your rufio.json has something like this in it:',
-			'"rufio": {',
-				'\t"metaEnd": "--META--"',
-			'}',
-		].join('\n');
-	}
-	done(err);
-});
-
-// Require build directory and active version
-config.validate('build', function(val, done) {
-	var err;
-	if (typeof val === 'undefined' || val === null) {
-		err = [
-			'Build config is required.  Make sure your rufio.json has something like this in it:',
-			'"build": {',
-				'\t"directory": "build"',
-				'\t"active": "0.0.0"',
-			'}',
-		].join('\n');
-	}
-	if (typeof val.directory !== 'string' || typeof val.active !== 'string') {
-		err = [
-			'Build config requires both directory and active.',
-			'Make sure your rufio.json has something like this in it:',
-			'"build": {',
-				'\t"directory": "build"',
-				'\t"active": "0.0.0"',
-			'}',
-		].join('\n');
-	}
-	done(err);
-});
-
-// Require theme directory and active theme
-config.validate('themes', function(val, done) {
-	var err;
-	if (typeof val === 'undefined' || val === null) {
-		err = [
-			'Themes config is required.',
-			'Make sure your rufio.json has something like this in it:',
-			'"theme": {',
-				'\t"directory": "build"',
-				'\t"active": "0.0.0"',
-			'}',
-		].join('\n');
-	}
-	if (typeof val.directory !== 'string' || typeof val.active !== 'string') {
-		err = [
-			'Themes config requires both directory and active.',
-			'Make sure your rufio.json has something like this in it:',
-			'"theme": {',
-				'\t"directory": "build"',
-				'\t"active": "0.0.0"',
-			'}',
-		].join('\n');
-	}
-	done(err);
-});
-
-// Validate the types
-config.validate('types', function(val, done) {
-	var err;
-	// Types is required
-	if (typeof val === 'undefined' || val === null) {
-		err = [
-			'Types config requires.',
-			'Make sure your rufio.json has something like this in it:',
-			'"types": {',
-				'\t// Data Types',
-			'}',
-		].join('\n');
+	// Require rufio.json file in site root
+	var rufioJsonFile = path.join(siteRoot, 'rufio.json')
+	if (!fs.existsSync(rufioJsonFile)) {
+		console.error('Invalid Rufio site.  A rufio.json file must exist in the site root.');
+		console.error('File does not exist: ' + rufioJsonFile);
+		process.exit(1);
 	}
 
-	// Validate type directories
-	util.async.each(val, function(v, done) {
-		if (typeof v.directory === 'undefined' || v.directory === null) {
-			err = 'Type ' + i + ' does not have a directory specified.';
-		}
-		fs.exists(path.join(config.get('SITE_ROOT'), v.directory), function(exists) {
-			if (!exists) {
-				err = 'Type ' + i + '\'s directory does not exist.';
-			}
-			done();
-		});
-	}, function() {
-		done(err);
+	// Setup config
+	this.config = new Config({
+		files: [
+			path.join(siteRoot, env + '-rufio.json'),
+			rufioJsonFile,
+		]
+	}, {
+		'RUFIO_ROOT': __dirname,
+		'SITE_ROOT': siteRoot,
+		'ENVIRONMENT': env
+	}, options);
+
+	// Massage build version, since you can pass it in from the cli
+	var bv = this.config.get('buildVersion');
+	if (bv) {
+		this.config.set('build:active', bv);
+	}
+
+	// Set composite paths
+	this.config.set('BUILD_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory'), this.config.get('build:active')));
+	this.config.set('THEME_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('themes:directory'), this.config.get('themes:active')));
+
+	// Setup the logger
+	this.logger = new Logger({
+		cli: this.config.get('rufio:cli'),
+		logLevel: this.config.get('rufio:logLevel'),
+		silent: this.config.get('rufio:silent'),
+		logFile: this.config.get('rufio:logFile'),
 	});
-});
 
-//
-// Init Rufio
-//
-var initalizing = false;
+	// Version
+	this.version = pkg.version || 'unknown';
 
-var init = function(done) {
-	// Only allow one init call
-	if (initalizing) {
-		util.logger.warn('Initalization already in progress');
-		done('Initalization already in progress');
+	// Initalizing?
+	this.initializing = false;
+
+	// Ready?
+	this.ready = false;
+
+	// The compiled types
+	this.types = {};
+
+	// Expose utilities
+	this.util = util;
+
+	// Plugins
+	this.plugins = new Plugins(this);
+
+	// Filters api
+	this.filters = new Filters(this);
+
+	// Event Hooks
+	this.hooks = new Hooks(this);
+
+};
+
+RufioApp.prototype.init = function(done) {
+	// Log our progress
+	this.logger.info('Initalizing Rufio');
+
+	// Log the options
+	this.logger.info('Config', this.config.get());
+
+	// Add core config validation rules
+	for (var i in coreValidationRules) {
+		this.config.validate(i, coreValidationRules[i]);
 	}
-	initalizing = true;
-	util.logger.info('Initalizing Rufio');
 
-	// 
-	// Load & validate the config
-	//
-	config.load(function(err) {
+	// Load and init the plugins
+	this.plugins.load(this.config.get('plugins:active'), function(err) {
+		// Log error
 		if (err) {
-			util.logger.error('Error loading config:', err);
+			this.logger.error('Failed to load plugins:', err);
+			this.initializing = false;
 			return done(err);
 		}
 
-		//
-		// Set env vars
-		//
-		config.constant('RUFIO_ROOT', __dirname);
-		config.constant('SITE_ROOT', process.cwd());
-		config.constant('BUILD_VERSION', process.env.RUFIO_BUILD_VERSION || config.get('build.active') || 'active');
-		config.constant('BUILD_ROOT', path.join(config.get('SITE_ROOT'), config.get('build.directory')));
-		config.constant('THEME_ROOT', path.join(config.get('SITE_ROOT'), config.get('themes.directory'), config.get('themes.active')));
-
-		// Add core filter load paths
-		plugins.addLoadPath(path.join(config.get('RUFIO_ROOT'), 'node_modules'));
-		plugins.addLoadPath(path.join(config.get('SITE_ROOT'), 'node_modules'));
-
-		// Add core filter load paths
-		filters.addLoadPath(path.join(config.get('RUFIO_ROOT'), 'filters'), 1000);
-		filters.addLoadPath(path.join(config.get('SITE_ROOT'), 'filters'), 50);
-		filters.addLoadPath(path.join(config.get('THEME_ROOT'), 'filters'), 10);
-
-		// Load and init the plugins
-		plugins.load(rufio, config.get('plugins.active'), function(err) {
+		// Run the validation
+		this.logger.info('Validating configs');
+		this.config.validate(function(err) {
 			// Log error
 			if (err) {
-				util.logger.error('Failed to load plugins:', err);
+				this.logger.error('Config validation errors: \n', err);
+				this.initializing = false;
 				return done(err);
 			}
-
-			// Run the validation
-			config.validate(function(err) {
+			
+			// Load the filters
+			this.filters.load(function(err) {
 				// Log error
 				if (err) {
-					util.logger.error('Config validation errors:', err);
+					this.logger.error('Failed to load filters:', err);
+					this.initializing = false;
 					return done(err);
 				}
-				
-				// Load the filters
-				filters.load(function(err) {
-					// Log error
-					if (err) {
-						util.logger.error('Failed to load filters:', err);
-						return done(err);
-					}
 
-					// Everything is loaded and ready to go
+				// Everything is loaded and ready to go
+				this.ready = true;
+				done();
+			}.bind(this));
+		}.bind(this));
+	}.bind(this));
+
+	// Chainable
+	return this;
+};
+
+// Load all the types and items
+RufioApp.prototype.loadAll = function(done) {
+
+	// Dont try to load until ready
+	if (!this.ready) {
+		this.logger.error('Cannot load data until Rufio is ready');
+		return;
+	}
+
+	// Run hooks before and after loading data
+	this.util.async.series([
+
+		// Before load hook
+		function(done) {
+			this.hooks.trigger('beforeLoad', this, done);
+		}.bind(this),
+
+		// Load each type individually
+		function(done) {
+			this.util.async.each(Object.keys(this.config.get('types')), function(type, done) {
+				// Load the new type
+				this.loadType(type, function(t) {
+					this.types[type] = t;
 					done();
-				});
-			});
+				}.bind(this));
+			}.bind(this), done);
+		}.bind(this),
 
-		});
+		// After load hook
+		function(done) {
+			this.hooks.trigger('afterLoad', this, done);
+		}.bind(this)
 
+	], function() {
+		done(null, this.types);
 	});
+
+	// Chainable
+	return this;
+};
+
+RufioApp.prototype.loadType = function(type, done) {
+
+	// Create the type
+	var t = new Type(type, this);
+
+	// Run hooks before and after compiling data
+	this.util.async.series([
+
+		// Before load type hook
+		function(done) {
+			this.hooks.trigger('beforeLoad:' + type, t, done);
+		}.bind(this),
+
+		// load the type files
+		function(done) {
+			t.loadFiles(done);
+		}.bind(this),
+
+		// After load type hook
+		function(done) {
+			this.hooks.trigger('afterLoad:' + type, t, done);
+		}.bind(this)
+
+	], function() {
+		done(t);
+	});
+
+	// Chainable
+	return this;
+};
+
+// Write all output files
+RufioApp.prototype.writeAll = function(done) {
+
+	// Run hooks and writing files
+	this.util.async.series([
+
+		// Before write hook
+		function(done) {
+			this.hooks.trigger('beforeWrite', this, done);
+		}.bind(this),
+		
+		// Write each type
+		function(done) {
+			this.util.async.each(Object.keys(this.config.get('types')), function(type, done) {
+				this.writeType(this.types[type], done);
+			}.bind(this), done);
+		}.bind(this),
+		
+		// After write hook
+		function(done) {
+			this.hooks.trigger('afterWrite', this, done);
+		}.bind(this)
+
+	], done);
+
+	// Chainable
+	return this;
+};
+
+
+// Write a single types' output
+RufioApp.prototype.writeType = function(type, done) {
+
+	this.util.async.series([
+			
+		// Before write type hook
+		function (done) {
+			this.hooks.trigger('beforeWrite:' + type.name, type, done);
+		}.bind(this),
+		
+		// Write the type
+		function (done) {
+			type.writeAll(done);
+		}.bind(this),
+		
+		// After write type hook
+		function (done) {
+			this.hooks.trigger('afterWrite:' + type.name, type, done);
+		}.bind(this)
+
+	], done);
+
+	// Chainable
+	return this;
 };
 
 // Load the package.json
 try {
 	// Get path to package.json
 	var pkgPath = path.join(__dirname, 'package.json')
-	util.logger.info('Loading ' + pkgPath);
 
 	// Load the file
 	var pkg = fs.readFileSync(pkgPath, {encoding: 'utf8'});
 	pkg = JSON.parse(pkg);
 
-	// Set the verison
-	config.constant('RUFIO_VERSION', pkg.version || 'unknown');
+	// Add version to rufio
+	module.exports.version = pkg.version;
+
 } catch(err) {
-	util.logger.error('Failed to load package.json', err);
+	console.error('Failed to load rufio package.json, version unknown');
+	console.error(err);
 }
 
-//
-// Public Interface
-//
-var rufio = module.exports = {
-
-	// Version
-	version: config.get('RUFIO_VERSION'),
-
-	// The init method
-	init: init,
-
-	// Expose utilities
-	util: util,
-
-	// Config api
-	config: config,
-
-	// Filters api
-	filters: filters,
-
-	// Event Hooks
-	hooks: hooks,
-
-	// Load Methods
-	load: load,
-
-	// Write Methods
-	write: write,
-
-};

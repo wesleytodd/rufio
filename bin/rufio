@@ -3,7 +3,8 @@
 var commander = require('commander'),
 	path = require('path'),
 	exec = require('child_process').exec,
-	Rufio = require('..');
+	Rufio = require('..'),
+	RufioServer = require('rufio-server').RufioServer;
 
 // CLI options
 commander
@@ -21,6 +22,16 @@ commander
 	.usage('COMMAND [options]')
 ;
 
+// Process options
+commander.on('verbose', function() {
+	// Verbose logging overrides normal log level setting
+	commander.logLevel = 'info';
+});
+commander.on('dev', function() {
+	// Dev flag
+	commander.environment = 'dev';
+});
+
 // Help command
 commander
 	.command('help')
@@ -33,16 +44,6 @@ commander
 	.command('build [ver]')
 	.description('Builds the site. Specify an optional version.')
 	.action(function(ver){
-
-		// Verbose logging overrides normal log level setting
-		if (commander.verbose) {
-			commander.logLevel = 'info';
-		}
-
-		// Dev flag
-		if (commander.dev) {
-			commander.environment = 'dev';
-		}
 
 		// Create rufio instance
 		var rufio = new Rufio({
@@ -105,25 +106,33 @@ commander
 
 // Start Nginx Server
 commander
-	.command('serve <host> <port>')
-	.description('Runs Nginx inside a Docker container.')
+	.command('serve')
+	.description('Runs an Express server for the Rufio site.')
 	.action(function(host, port) {
 
 		// Create rufio instance
-		var rufio = new Rufio();
+		var rufio = new Rufio({
+			rufio: {
+				logLevel: commander.logLevel,
+				silent: commander.silent,
+				cli: false,
+				logFile: commander.logFile || 'rufio.log',
+			},
+			buildVersion: commander.buildVersion,
+			siteRoot: commander.siteRoot,
+			environment: commander.environment,
+		});
 
 		// Start Rufio
-		rufio.init(function() {
-			exec([
-				'docker run -d',
-				'-p ' + port + ':80',
-				'-v ' + rufio.config.get('RUFIO_ROOT') + '/docker/config/nginx:/etc/nginx/sites-enabled',
-				'-v ' + rufio.config.get('SITE_ROOT') + '/log/nginx:/var/log/nginx',
-				'-v ' + path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory')) + ':/usr/local/rufio/' + host
-			].join(' '), function(err) {
-				if (err) return console.error(err);
-				console.log('Nginx started at ' + hostname + ':' + port);
-			});
+		rufio.init(function(err) {
+			if (err) {
+				rufio.logger.error(err);
+				process.exit(1);
+			}
+
+			var server = new RufioServer(rufio);
+			server.start();
+
 		});
 	});
 

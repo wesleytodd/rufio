@@ -17,6 +17,9 @@ var path = require('path'),
 //
 var Rufio = module.exports = function(options) {
 
+	// Default options
+	options = options || {};
+
 	// Site root
 	var siteRoot = options.siteRoot || process.cwd();
 
@@ -50,7 +53,8 @@ var Rufio = module.exports = function(options) {
 	}
 
 	// Set composite paths
-	this.config.set('BUILD_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory'), this.config.get('build:active')));
+	this.config.set('BUILD_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory')));
+	this.config.set('BUILD_DIR', path.join(this.config.get('BUILD_ROOT'), this.config.get('build:active')));
 	this.config.set('THEME_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('themes:directory'), this.config.get('themes:active')));
 
 	// Setup the logger

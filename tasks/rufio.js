@@ -35,7 +35,7 @@ module.exports = function (grunt) {
 		}
 
 		// Create an instance of a rufio app
-		var rufio = new Rufio();
+		var rufio = new Rufio(options);
 
 		// Initalize Rufio
 		rufio.init(function(err) {

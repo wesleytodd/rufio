@@ -6,6 +6,7 @@ var path = require('path'),
 	Hooks = require('./lib/hooks'),
 	Filters = require('./lib/filters'),
 	Plugins = require('./lib/plugins'),
+	TemplateCache = require('./lib/template'),
 	Type = require('./lib/type'),
 	util = require('./lib/util'),
 	coreValidationRules = require('./lib/validation-rules');
@@ -74,6 +75,9 @@ var RufioApp = module.exports = function(options) {
 	// Expose utilities
 	this.util = util;
 
+	// Template Cache
+	this.templates = new TemplateCache(this);
+
 	// Plugins
 	this.plugins = new Plugins(this);
 
@@ -98,6 +102,7 @@ RufioApp.prototype.init = function(done) {
 	}
 
 	// Load and init the plugins
+	this.logger.info('Loading plugins');
 	this.plugins.load(this.config.get('plugins:active'), function(err) {
 		// Log error
 		if (err) {
@@ -117,6 +122,7 @@ RufioApp.prototype.init = function(done) {
 			}
 			
 			// Load the filters
+			this.logger.info('Loading filters');
 			this.filters.load(function(err) {
 				// Log error
 				if (err) {

@@ -61,7 +61,7 @@ commander
 		// Start Rufio
 		rufio.init(function(err) {
 			if (err) {
-				rufio.logger.error(err);
+				rufio.logger.error('Rufio failed to initalize.');
 				process.exit(1);
 			}
 

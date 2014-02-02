@@ -1,12 +1,11 @@
 var fs = require('fs'),
 	path = require('path');
 
-module.exports = function(content, data) {
-	var p = path.join(this.config.get('THEME_ROOT'), content);
+module.exports = function(file, data) {
 	try {
-		var c = fs.readFileSync(p, {encoding: 'utf8'});
-		return this.filters.apply('template', c, data);
+		var content = this.templates.readFileSync(file);
+		return this.filters.apply('template', content, data) || '';
 	} catch(err) {
-		console.error(err);
+		this.logger.error(err);
 	}
 };

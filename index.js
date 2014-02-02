@@ -1,12 +1,13 @@
-// Requires
+// Requirements
 var path = require('path'),
 	fs = require('fs'),
+	async = require('async'),
 	Logger = require('./lib/logger'),
 	Config = require('./lib/config'),
 	Hooks = require('./lib/hooks'),
 	Filters = require('./lib/filters'),
 	Plugins = require('./lib/plugins'),
-	TemplateCache = require('./lib/template'),
+	Template = require('./lib/template'),
 	Type = require('./lib/type'),
 	util = require('./lib/util'),
 	coreValidationRules = require('./lib/validation-rules');
@@ -14,7 +15,7 @@ var path = require('path'),
 //
 // Rufio App Constructor
 //
-var RufioApp = module.exports = function(options) {
+var Rufio = module.exports = function(options) {
 
 	// Site root
 	var siteRoot = options.siteRoot || process.cwd();
@@ -76,7 +77,7 @@ var RufioApp = module.exports = function(options) {
 	this.util = util;
 
 	// Template Cache
-	this.templates = new TemplateCache(this);
+	this.templates = new Template(this);
 
 	// Plugins
 	this.plugins = new Plugins(this);
@@ -89,7 +90,7 @@ var RufioApp = module.exports = function(options) {
 
 };
 
-RufioApp.prototype.init = function(done) {
+Rufio.prototype.init = function(done) {
 	// Log our progress
 	this.logger.info('Initalizing Rufio');
 
@@ -143,7 +144,7 @@ RufioApp.prototype.init = function(done) {
 };
 
 // Load all the types and items
-RufioApp.prototype.loadAll = function(done) {
+Rufio.prototype.loadAll = function(done) {
 
 	// Dont try to load until ready
 	if (!this.ready) {
@@ -152,7 +153,7 @@ RufioApp.prototype.loadAll = function(done) {
 	}
 
 	// Run hooks before and after loading data
-	this.util.async.series([
+	async.series([
 
 		// Before load hook
 		function(done) {
@@ -161,7 +162,7 @@ RufioApp.prototype.loadAll = function(done) {
 
 		// Load each type individually
 		function(done) {
-			this.util.async.each(Object.keys(this.config.get('types')), function(type, done) {
+			async.each(Object.keys(this.config.get('types')), function(type, done) {
 				// Load the new type
 				this.loadType(type, function(t) {
 					this.types[type] = t;
@@ -183,13 +184,13 @@ RufioApp.prototype.loadAll = function(done) {
 	return this;
 };
 
-RufioApp.prototype.loadType = function(type, done) {
+Rufio.prototype.loadType = function(type, done) {
 
 	// Create the type
 	var t = new Type(type, this);
 
 	// Run hooks before and after compiling data
-	this.util.async.series([
+	async.series([
 
 		// Before load type hook
 		function(done) {
@@ -215,10 +216,10 @@ RufioApp.prototype.loadType = function(type, done) {
 };
 
 // Write all output files
-RufioApp.prototype.writeAll = function(done) {
+Rufio.prototype.writeAll = function(done) {
 
 	// Run hooks and writing files
-	this.util.async.series([
+	async.series([
 
 		// Before write hook
 		function(done) {
@@ -227,7 +228,7 @@ RufioApp.prototype.writeAll = function(done) {
 		
 		// Write each type
 		function(done) {
-			this.util.async.each(Object.keys(this.config.get('types')), function(type, done) {
+			async.each(Object.keys(this.config.get('types')), function(type, done) {
 				this.writeType(this.types[type], done);
 			}.bind(this), done);
 		}.bind(this),
@@ -245,9 +246,9 @@ RufioApp.prototype.writeAll = function(done) {
 
 
 // Write a single types' output
-RufioApp.prototype.writeType = function(type, done) {
+Rufio.prototype.writeType = function(type, done) {
 
-	this.util.async.series([
+	async.series([
 			
 		// Before write type hook
 		function (done) {
@@ -273,7 +274,7 @@ RufioApp.prototype.writeType = function(type, done) {
 // Load the package.json
 try {
 	// Get path to package.json
-	var pkgPath = path.join(__dirname, 'package.json')
+	var pkgPath = path.join(__dirname, 'package.json');
 
 	// Load the file
 	var pkg = fs.readFileSync(pkgPath, {encoding: 'utf8'});
@@ -286,4 +287,3 @@ try {
 	console.error('Failed to load rufio package.json, version unknown');
 	console.error(err);
 }
-

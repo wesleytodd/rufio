@@ -1,6 +1,3 @@
-var fs = require('fs'),
-	path = require('path');
-
 module.exports = function(file, data) {
 	try {
 		var content = this.templates.readFileSync(file);

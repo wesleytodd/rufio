@@ -96,7 +96,7 @@ commander
 		rufio.init(function() {
 			// Link the version to active
 			exec('ln -sfn ./' + ver + ' ./active', {
-				cwd: path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory'))
+				cwd: path.join(this.SITE_ROOT, this.config.get('build:directory'))
 			}, function(err, stdout, stderr) {
 				if (err) return console.error(err);
 				console.log('Active build changed to ' + ver);

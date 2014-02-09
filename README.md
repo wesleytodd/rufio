@@ -143,7 +143,7 @@ Themes are defined in the themes directory.  The active theme in the `rufio.json
 This shows how rufio will cascade it's template lookups through the entire app.  So if you have a plugin that defines a template, for example the [Google Analytics Plugin](https://github.com/wesleytodd/rufio-google-analytics), you can include that template in your theme like this:
 
 ```javascript
-<%= config.get('ENVIRONMENT') == 'prod') ? include('analytics.html') : '' %>
+<%= ENVIRONMENT == 'prod') ? include('analytics.html') : '' %>
 ```
 
 Inside a template, all of the data for the site is available.  Also the configs, filters and utilities are available: `config.get('build:active')`, `filters.apply('ucFirst', 'title')`, `util._.map([...], function() {...})`.  Lastly, all of the content for the current type is available in the `meta` and `content` keys.

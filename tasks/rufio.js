@@ -9,9 +9,9 @@ module.exports = function (grunt) {
 
 		// Default Options
 		var defaultOptions = {
-			environment: 'prod',
-			silent: false,
-			version: 'active'
+			rufio: {
+				silent: true
+			}
 		};
 
 		// Merge config with defaults
@@ -23,15 +23,8 @@ module.exports = function (grunt) {
 		// Pass along verbose
 		var flags = grunt.option.flags();
 		if (flags.indexOf('--verbose') !== -1 || flags.indexOf('-v') !== -1) {
-			process.env.RUFIO_VERBOSE_LOGGING = true;
-		}
-
-		// Set the rufio environment
-		process.env.RUFIO_ENVIRONMENT = options.environment;
-
-		// Silent?
-		if (options.silent) {
-			process.env.RUFIO_SILENT = options.silent;
+			options.rufio.logLevel = 'info';
+			options.rufio.silent = false;
 		}
 
 		// Create an instance of a rufio app

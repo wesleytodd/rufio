@@ -20,14 +20,15 @@ var Rufio = module.exports = function(options) {
 	// Default options
 	options = options || {};
 
-	// Site root
-	var siteRoot = options.siteRoot || process.cwd();
+	// Site & Rufio Root Paths
+	this.RUFIO_ROOT = options.RUFIO_ROOT || __dirname;
+	this.SITE_ROOT = options.SITE_ROOT || options.siteRoot || process.cwd();
 
 	// Environment
-	var env = options.environment || 'prod';
+	this.ENVIRONMENT = options.environment || 'prod';
 
 	// Require rufio.json file in site root
-	var rufioJsonFile = path.join(siteRoot, 'rufio.json')
+	var rufioJsonFile = path.join(this.SITE_ROOT, 'rufio.json')
 	if (!fs.existsSync(rufioJsonFile)) {
 		console.error('Invalid Rufio site.  A rufio.json file must exist in the site root.');
 		console.error('File does not exist: ' + rufioJsonFile);
@@ -35,16 +36,12 @@ var Rufio = module.exports = function(options) {
 	}
 
 	// Setup config
-	this.config = new Config({
+	this.config = new Config(this, {
 		files: [
-			path.join(siteRoot, env + '-rufio.json'),
+			path.join(this.SITE_ROOT, this.ENVIRONMENT + '-rufio.json'),
 			rufioJsonFile,
 		]
-	}, {
-		'RUFIO_ROOT': __dirname,
-		'SITE_ROOT': siteRoot,
-		'ENVIRONMENT': env
-	}, options);
+	}, {}, options);
 
 	// Massage build version, since you can pass it in from the cli
 	var bv = this.config.get('buildVersion');
@@ -52,10 +49,10 @@ var Rufio = module.exports = function(options) {
 		this.config.set('build:active', bv);
 	}
 
-	// Set composite paths
-	this.config.set('BUILD_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('build:directory')));
-	this.config.set('BUILD_DIR', path.join(this.config.get('BUILD_ROOT'), this.config.get('build:active')));
-	this.config.set('THEME_ROOT', path.join(this.config.get('SITE_ROOT'), this.config.get('themes:directory'), this.config.get('themes:active')));
+	// Set paths
+	this.BUILD_ROOT = path.join(this.SITE_ROOT, this.config.get('build:directory'));
+	this.BUILD_DIR = path.join(this.BUILD_ROOT, this.config.get('build:active'));
+	this.THEME_ROOT = path.join(this.SITE_ROOT, this.config.get('themes:directory'), this.config.get('themes:active'));
 
 	// Setup the logger
 	this.logger = new Logger({

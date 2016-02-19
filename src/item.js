@@ -1,60 +1,87 @@
-import path from 'path';
-import fs from 'fs';
-import through2 from 'through2';
-import yaml from 'js-yaml';
-import slug from 'slug';
-import camel from 'camel-case';
+import pathToRegexp from 'path-to-regexp';
+import {reducePipe} from './util/reduce-pipe';
+import {rawContent} from './filters/raw-content';
+import {parsedContent} from './filters/parsed-content';
+
+// Private route symbol
+const _route = Symbol('route');
+const _compiledRoute = Symbol('compiledRoute');
+const _permalink = Symbol('permalink');
 
 export class Item {
 	constructor (opts = {}) {
 		// Keep site and type reference
-		this.site = opts.site;
-		this.type = opts.type;
+		this.type = opts.type || null;
 
-		// Filepath is type.directory + opts.filename
-		this.filename = opts.filename;
-		this.filepath = path.join(opts.type.directory, opts.filename);
-		this.filePathParts = opts.filename.split(path.sep);
+		// Private stuff
+		this[_route] = null;
+		this[_compiledRoute] = null;
+		this[_permalink] = null;
 
-		// Setup the file readstream
-		this._readStream = fs.createReadStream(this.filepath);
+		// Some options
+		this.id = opts.id || null;
+		this.mime = opts.mime || null;
+		this.route = opts.route || '/:slug';
 
 		// Stuff loaded from the file
-		// this.rawMeta = '';
 		this.meta = {};
-		this.rawContent = '';
+		this.rawContent = new Buffer(0);
 		this.content = '';
 		this.pathname = null;
 		this.title = '';
 		this.slug = '';
 		this.date = new Date();
 		this.status = 'Published';
+
+		// Setup filters
+		this.filters = [];
+		this.addFilter(opts.filters);
 	}
 
 	load () {
-		var s = through2.obj();
+		// Apply filters
+		return this.createReadStream([rawContent(this), ...this.filters, parsedContent(this)]).resume();
+	}
 
-		var file = this.type.filters.reduce((file, filter) => {
-			return file.pipe(filter(this));
-		}, fs.createReadStream(this.filepath).pipe(through2((chunk, enc, done) => {
-			this.rawContent += chunk.toString();
-			done(null, chunk);
-		})));
+	createReadStream (filters = this.filters) {
+		if (typeof this._createReadStream !== 'function') {
+			throw new Error('All items must implement _createReadStream');
+		}
 
-		file
-			.on('data', (d) => {
-				this.content += d;
-			})
-			.on('end', () => {
-				s.end(this);
-			});
+		// Chain streams together
+		return reducePipe(this._createReadStream(), filters);
+	}
 
-		return s;
+	addFilter (filter) {
+		if (filter instanceof Array) {
+			return filter.forEach(this.addFilter.bind(this));
+		}
+		if (!filter) {
+			return;
+		}
+		this.filters.push(filter(this));
+	}
+
+	set route (route) {
+		this[_route] = route;
+		this[_compiledRoute] = pathToRegexp.compile(route);
+	}
+
+	get route () {
+		return this[_route];
+	}
+
+	get permalink () {
+		return this[_permalink] || this[_compiledRoute](this);
+	}
+
+	set permalink (permalink) {
+		this[_permalink] = permalink;
 	}
 
 	toJSON () {
 		return {
-			type: this.type.name,
+			type: (this.type && this.type.name) || null,
 			pathname: this.pathname,
 			date: this.date.toString(),
 			title: this.title,

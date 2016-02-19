@@ -1,13 +1,7 @@
-export class Theme {
-	constructor (site) {
-		this.site = site;
-	}
+import through2 from 'through2';
 
-	renderContentItem (item, done) {
-		done(null, item);
-	}
-
-	renderContentIndex (items, done) {
-		done(null, item);
-	}
+export default function theme (site) {
+	return through2.obj(function (item, enc, done) {
+		done(null, JSON.stringify(item));
+	});
 }

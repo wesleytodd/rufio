@@ -1,6 +1,8 @@
 module.exports = {
 	Site: require('./lib/site').Site,
+	Collection: require('./lib/collection').Collection,
 	Type: require('./lib/type').Type,
-	Item: require('./lib/item').Item,
-	Theme: require('./lib/theme').Theme
+	FileType: require('./lib/file-type').FileType,
+	File: require('./lib/file').File,
+	Item: require('./lib/item').Item
 };

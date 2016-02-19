@@ -1,8 +1,0 @@
-#! /usr/bin/env node
-
-var app = require('commander');
-var pkg = require('../package.json');
-
-app.version(pkg.version);
-app.command('build [...stuff]', 'Build stuff');
-app.parse(process.argv);

@@ -1,16 +1,37 @@
-export class Collection {
+import EventEmitter from 'events-async';
+import pathToRegexp from 'path-to-regexp';
+
+const _route = Symbol('route');
+const _compiledRoute = Symbol('compiledRoute');
+const _sortBy = Symbol('sortBy');
+const _indices = Symbol('indices');
+
+export class Collection extends EventEmitter {
 	constructor (opts = {}) {
-		this.sortBy = opts.sortBy instanceof Array ? opts.sortBy : [opts.sortBy || 'id'];
+		super();
+		this.sortBy = opts.sortBy || 'id';
 		this.route = opts.route || null;
 		this.items = [];
 		this.indices = {};
-		this._indices = {};
+		this[_indices] = {};
 
-		if (opts.indexBy) {
-			opts.indexBy.forEach((i) => {
-				this.indexBy(i.keys || i, i.route);
-			});
-		}
+		// Wait for next tick to allow for plugins
+		// and tools to hook into events
+		process.nextTick(() => {
+			// Add indexes
+			if (opts.indexBy) {
+				opts.indexBy.forEach((i) => {
+					this.indexBy(i.keys || i, i.route);
+				});
+			}
+
+			// Add items
+			if (opts.items) {
+				opts.items.forEach((i) => {
+					this.addItem(i);
+				});
+			}
+		});
 	}
 
 	addItem (item) {
@@ -31,14 +52,16 @@ export class Collection {
 		});
 
 		// Add the items to the index
-		for (let i in this._indices) {
-			var key = createIndexKey(this._indices[i].keys, item);
+		for (let i in this[_indices]) {
+			var key = createIndexKey(this[_indices][i].keys, item);
 			this.indices[key] = this.indices[key] || new Collection({
-				sortBy: this._indices[i].keys,
-				route: this._indices[i].route
+				sortBy: this[_indices][i].keys,
+				route: this[_indices][i].route
 			});
 			this.indices[key].addItem(item);
 		}
+
+		this.emit('addItem', item);
 	}
 
 	getItemsFromIndex (keys, values) {
@@ -55,10 +78,10 @@ export class Collection {
 
 		// Setup the index, dont re-initalize an index
 		var k = keys.join(':');
-		if (this._indices[k]) {
+		if (this[_indices][k]) {
 			return;
 		}
-		this._indices[k] = {
+		this[_indices][k] = {
 			keys,
 			route
 		};
@@ -72,6 +95,8 @@ export class Collection {
 			});
 			this.indices[key].addItem(item);
 		});
+
+		this.emit('createIndex', keys, route);
 	}
 
 	map (fnc, ctx) {
@@ -82,20 +107,46 @@ export class Collection {
 		return this.items.forEach(fnc, ctx);
 	}
 
+	slice (start, end) {
+		var c = new Collection({
+			sortBy: this.sortBy
+		});
+		this.items.slice(start, end).forEach(function (i) {
+			c.addItem(i);
+		});
+		return c;
+	}
+
 	get length () {
 		return this.items.length;
 	}
 
-	static get types () {
-		return ['single', 'list'];
+	set route (route) {
+		this[_route] = route;
+		if (route) {
+			this[_compiledRoute] = pathToRegexp.compile(route);
+		} else {
+			this[_compiledRoute] = () => null;
+		}
+	}
+
+	get route () {
+		return this[_route];
+	}
+
+	set sortBy (sortBy) {
+		this[_sortBy] = sortBy instanceof Array ? sortBy : [sortBy];
+	}
+
+	get sortBy () {
+		return this[_sortBy];
 	}
 
 	toJSON () {
 		return {
-			route: this.route,
 			sortBy: this.sortBy,
-			length: this.length,
-			items: this.map((i) => {
+			rotue: this.route,
+			items: this.items.map((i) => {
 				return i.toJSON();
 			})
 		};
@@ -107,4 +158,3 @@ function createIndexKey (props, item) {
 		return p + '[' + item[p] + ']';
 	}).join(':');
 }
-

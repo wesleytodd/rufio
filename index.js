@@ -4,5 +4,6 @@ module.exports = {
 	Type: require('./lib/type').Type,
 	FileType: require('./lib/file-type').FileType,
 	File: require('./lib/file').File,
-	Item: require('./lib/item').Item
+	Item: require('./lib/item').Item,
+	renderer: require('./lib/renderer').default
 };

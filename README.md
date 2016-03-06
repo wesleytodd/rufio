@@ -1,6 +1,6 @@
 # Rufio
 
-![image](https://raw.githubusercontent.com/wesleytodd/rufio/master/assets/rufio.jpg)
+![image](https://raw.githubusercontent.com/wesleytodd/rufio/v1.0.0/assets/rufio.jpg)
 
 Rufio is a extensible and modular content management system for node apps.  It aims to be a set of low level tools to build on top of, so it provides some data structures like `Site`, `Type` (think "posts" or "pages") and `Item` (ex. a single post).  One of the core concepts Rufio is built on top of are node streams.  Almost all operations to transform or compose your content is done through streams.  This helps make large collections of content performant and helps keep a lower memory footprint.
 

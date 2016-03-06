@@ -25,10 +25,16 @@
   },
   "dependencies": {
     "babel-register": "^6.6.0",
+    "camel-case": "^1.2.2",
     "commander": "~2.1.0",
+    "end-of-stream": "^1.1.0",
+    "events-async": "^1.0.0",
     "filter-stream2": "^1.0.0",
     "glob-stream": "^5.3.1",
+    "json-stringify-safe": "^5.0.1",
     "path-to-regexp": "^1.2.1",
+    "pluralize": "^1.2.1",
+    "pump": "^1.0.1",
     "run-series": "^1.1.4",
     "through2": "^2.0.1"
   },

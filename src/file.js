@@ -55,9 +55,12 @@ export class File extends Item {
 			// Call callback when done
 			eos(s, (err) => {
 				// Post-load hook
-				this.emit('postLoad').then(done);
+				this.emit('postLoad').then(function () {
+					done();
+				});
 			});
 		});
+
 		return s;
 	}
 

@@ -1,5 +1,6 @@
 import pathToRegexp from 'path-to-regexp';
 import eos from 'end-of-stream';
+import pump from 'pump';
 import {singular} from 'pluralize';
 import {proxyEvents} from './util/proxy-item-events';
 import {pushObjOnEnd} from './util/push-obj-on-end';
@@ -47,6 +48,7 @@ export class Type extends Collection {
 		// reference to the type, an item can only belong to 
 		// one type at a time
 		item.type = this;
+		item.site = this.site;
 		super.addItem(item);
 
 		// Proxy some events from the item
@@ -64,7 +66,7 @@ export class Type extends Collection {
 	load (done = function () {}) {
 		// TODO Do something with errors
 		// Crete the read stream and start flowing
-		var s = this.createReadStream().pipe(pushObjOnEnd(this));
+		var s = pump(this.createReadStream(), pushObjOnEnd(this));
 
 		// Preload hook
 		this.emit('preLoad').then(() => {

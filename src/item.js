@@ -16,6 +16,7 @@ export class Item extends EventEmitter {
 
 		// Keep site and type reference
 		this.type = opts.type || null;
+		this.site = opts.site || null;
 
 		// Private stuff
 		this[_route] = null;

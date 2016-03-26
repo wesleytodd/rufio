@@ -1,5 +1,6 @@
 import EventEmitter from 'events-async';
 import pathToRegexp from 'path-to-regexp';
+import get from 'lodash.get';
 
 const _route = Symbol('route');
 const _compiledRoute = Symbol('compiledRoute');
@@ -10,6 +11,7 @@ export class Collection extends EventEmitter {
 	constructor (opts = {}) {
 		super();
 		this.sortBy = opts.sortBy || 'id';
+		this.sortOrder = opts.sortOrder || 'ascending';
 		this.route = opts.route || null;
 		this.items = [];
 		this.indices = {};
@@ -41,11 +43,11 @@ export class Collection extends EventEmitter {
 		this.items.sort((a, b) => {
 			for (let i in this.sortBy) {
 				var k = this.sortBy[i];
-				if (a[k] < b[k]) {
-					return -1;
+				if (get(a, k) < get(b, k)) {
+					return this.sortOrder === 'ascending' ? -1 : 1;
 				}
-				if (a[k] > b[k]) {
-					return 1;
+				if (get(a, k) > get(b, k)) {
+					return this.sortOrder === 'ascending' ? 1 : -1;
 				}
 			}
 			return 0;

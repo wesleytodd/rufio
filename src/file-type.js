@@ -2,6 +2,7 @@ import path from 'path';
 import through2 from 'through2';
 import globStream from 'glob-stream';
 import eos from 'end-of-stream';
+import pump from 'pump';
 import {createDirectoryFilterStream} from './util/filter-dirs-stream';
 import {stripBasenameStream} from './util/strip-base-stream';
 import {File} from './file';
@@ -34,18 +35,19 @@ export class FileType extends Type {
 
 	_createReadStream () {
 		var type = this;
-		return globStream
-			.create([...this.includePattern, ...this.excludePattern], {
+		return pump(
+			globStream.create([...this.includePattern, ...this.excludePattern], {
 				allowEmpty: true,
 				cwdbase: true,
 				cwd: path.join(type.baseDir, type.directory)
-			})
-			.pipe(createDirectoryFilterStream())
-			.pipe(stripBasenameStream())
-			.pipe(through2.obj(function (filename, enc, done) {
+			}),
+			createDirectoryFilterStream(),
+			stripBasenameStream(),
+			through2.obj(function (filename, enc, done) {
 				// Create item
 				var item = new type.Item({
 					type: type,
+					site: type.site,
 					mime: type.mime,
 					ext: type.ext,
 					route: type.itemRoute,
@@ -68,7 +70,8 @@ export class FileType extends Type {
 					type.addItem(item);
 					done();
 				});
-			}));
+			})
+		);
 	}
 
 	set includePattern (pattern) {
